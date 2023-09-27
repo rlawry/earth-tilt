@@ -18,7 +18,7 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls( camera, renderer.domElement );
 
 // Create a cube
-const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+const material = new THREE.MeshToonMaterial({ color: 0x00ff00 });
 
 const geometry = new THREE.SphereGeometry(1, 32, 32);
 
