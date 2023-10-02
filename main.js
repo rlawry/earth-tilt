@@ -4,10 +4,14 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.121.1/exampl
 const scene = new THREE.Scene();
 
 // Create a camera
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, 0.1, 100000 );
 camera.position.z = 20;
 camera.position.y = 8;
 camera.lookAt(new THREE.Vector3(0,0,0));
+
+//For centering the meshGroup
+
+
 const group = new THREE.Group();
 const group2 = new THREE.Group();
 // Create a renderer
@@ -18,25 +22,36 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls( camera, renderer.domElement );
 
 // Create a cube
-const material = new THREE.MeshToonMaterial({ color: 0x00ff00 });
+const materialDay = new THREE.MeshStandardMaterial({ color: 0x0096FF });
+const materialNight = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
-const geometry = new THREE.SphereGeometry(1, 32, 32);
+const geometryDay = new THREE.SphereGeometry(1, 32, 32, Math.PI, 2*Math.PI);
+const geometryNight = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI);
 
 const erths = [];
 for (let i = 0; i<12; i++){
-    const erth = new THREE.Mesh(geometry, material);
-    erth.material.flatShading = false;
-    erths.push(erth);
+    const erthDay = new THREE.Mesh(geometryDay, materialDay);
+    const erthNight = new THREE.Mesh(geometryNight, materialNight);
+    // erthDay.material.flatShading = false;
+    // erthNight.material.flatShading = false;
+    erths.push(erthDay);
+    erths.push(erthNight);
 }
 let dis = 10;
+let sphereCount = 0;
 for(let i = 0; i<12; i++){
-    erths[i].position.set(dis*Math.sin(i*Math.PI/2/3),0,dis*Math.cos(i*Math.PI/2/3));
-    group.add(erths[i]);
+    erths[sphereCount].position.set(dis*Math.sin(i*Math.PI/2/3),0,dis*Math.cos(i*Math.PI/2/3));
+    erths[sphereCount+1].position.set(dis*Math.sin(i*Math.PI/2/3),0,dis*Math.cos(i*Math.PI/2/3));
+    erths[sphereCount].rotation.y = i * Math.PI/2/3;
+    erths[sphereCount+1].rotation.y = i * Math.PI/2/3;
+    group.add(erths[sphereCount]);
+    group.add(erths[sphereCount+1]);
+    sphereCount +=2;
 }
 
 const lines = [];
 
-const lineMaterial = new THREE.LineBasicMaterial({color: 0xFFFFFF, linewidth: 100});
+const lineMaterial = new THREE.LineBasicMaterial({color: 0xDA70D6, linewidth: 10});
 
 for (let i = 0; i < 12; i++) {
     // Calculate the position of the current segment
@@ -63,8 +78,6 @@ for (let i = 0; i < 12; i++) {
 }
 
 
-
-
 const geometry2 = new THREE.PlaneGeometry( 100, 100 );
 const material2 = new THREE.MeshBasicMaterial( {color: 0x444444, side: THREE.DoubleSide} );
 const plane = new THREE.Mesh( geometry2, material2 );
@@ -77,28 +90,30 @@ scene.add( plane );
 scene.add(group);
 scene.add(group2);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.01); // Color and intensity (0.5)
+const ambientLight = new THREE.AmbientLight(0xffffff, 1); // Color and intensity (0.5)
 scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff,1);
 directionalLight.position.set(0,2,0);
 //scene.add(directionalLight);
 
-const light = new THREE.PointLight( 0xffFFFF, 3 );
+const light = new THREE.PointLight( 0xffFFFF, 1 );
 light.position.set( 0, 0, 0 );
 scene.add( light );
 
 // Animation loop
 var time = new Date();
-const center = new THREE.Vector3(0, 0, 0);
 
-// Set initial translation values (to position the sphere initially)
-const translateX = 2; // Change this value to set the initial position along the X-axis
-const translateY = 0; // Change this value to set the initial position along the Y-axis
-const translateZ = 0; // Change this value to set the initial position along the Z-axis
+var box = new THREE.Box3().setFromObject(group);
+box.center(group.position);
+group.localToWorld(box);
+group.position.multiplyScalar(-1);
 
-const radius = 2;       // Change this value to set the radius of the orbit
-const rotationSpeed = 0.01; // Change this value to control the speed of revolution
+//For fitting the object to the screen when using orthographic camera
 
+camera.zoom = Math.min(window.innerWidth / (box.max.x - box.min.x),
+    window.innerHeight / (box.max.y - box.min.y)) * 0.4;
+camera.updateProjectionMatrix();
+camera.updateMatrix();
 
 const animate = () => {
     requestAnimationFrame(animate);
@@ -110,7 +125,6 @@ const animate = () => {
     lines.forEach(lin => {
         lin.rotation.y -= 0.005;
     });
-
 
     time = new Date();
     controls.update();
@@ -125,8 +139,16 @@ window.addEventListener("resize", () => {
     const newHeight = window.innerHeight;
 
     // Adjust the Three.js renderer size to fill the new window size
-    camera.aspect = newWidth / newHeight;
+
+    const newAspect = newWidth / newHeight;
+   
+    camera.left = newWidth * newAspect / -2;
+    camera.right = newWidth * newAspect / 2;
+    camera.zoom = Math.min(window.innerWidth / (box.max.x - box.min.x),
+    window.innerHeight / (box.max.y - box.min.y)) * 0.4;
     camera.updateProjectionMatrix();
+    camera.updateMatrix();
+
     renderer.setSize(newWidth, newHeight);
 });
 
